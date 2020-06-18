@@ -1,0 +1,35 @@
+TOP GROSSING CHARTS
+https://play.google.com/store/apps/collection/cluster?clp=0g4YChYKEHRvcGdyb3NzaW5nX0dBTUUQBxgD:S:ANO1ljLhYwQ&gsr=ChvSDhgKFgoQdG9wZ3Jvc3NpbmdfR0FNRRAHGAM%3D:S:ANO1ljIKta8
+
+
+
+-- originally loaded games #38
+/html/body/div[1]/div[4]/c-wiz[5]/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[38]/c-wiz/div/div
+
+XPath
+//*[@id="fcxH9b"]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[10]/c-wiz/div/div
+
+Full XPath
+/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[10]/c-wiz/div/div
+
+ahref
+/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[2]/c-wiz/div/div/div[2]/div/div/div[1]/div/div/div[1]/a
+
+game_title
+/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[2]/c-wiz/div/div/div[2]/div/div/div[1]/div/div/div[1]/a/div
+
+
+-- Extra loaded games #1
+/html/body/div[1]/div[4]/c-wiz[5]/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[1]/div/div
+
+-- Extra loaded games #2
+/html/body/div[1]/div[4]/c-wiz[5]/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[2]/div/div
+
+XPath
+//*[@id="fcxH9b"]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[14]/div/div
+//*[@id="fcxH9b"]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[56]/div/div
+
+/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[56]/div/div
+
+
+
