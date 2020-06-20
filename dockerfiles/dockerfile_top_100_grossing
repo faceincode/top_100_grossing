@@ -1,0 +1,9 @@
+FROM python:3.8-slim
+
+RUN apk --update add gcc bash && apk upgrade
+RUN apk add gcc
+RUN apk add bash
+
+ADD requirements.txt /requirements.txt
+RUN pip install -r /requirements.txt
+ENV PYTHONPATH=/code

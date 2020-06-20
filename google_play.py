@@ -1,4 +1,7 @@
+#/home/ralcantara/workspace/data_mining/top_100_grossing/venv/bin/python
 import time
+import json
+import datetime
 from collections import namedtuple
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -27,7 +30,7 @@ def scroll_down(driver, n_times):
             break
         last_height = new_height
 
-def get_top():
+def get_top(test=False):
     print('debug browser')
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--no-sandbox')
@@ -40,38 +43,50 @@ def get_top():
     google_play_top_grossing_url = 'https://play.google.com/store/apps/collection/cluster?clp=0g4YChYKEHRvcGdyb3NzaW5nX0dBTUUQBxgD:S:ANO1ljLhYwQ&gsr=ChvSDhgKFgoQdG9wZ3Jvc3NpbmdfR0FNRRAHGAM%3D:S:ANO1ljIKta8'
     driver.get(google_play_top_grossing_url)
 
-    # scroll_down(driver, 5)
-
     # Every xPath relative to game entry
-    top_100_games = []
+    top_apps = []
     game_link_xpath = '/div[2]/div/div/div[1]/div/div/div[1]/a'
     game_title_xpath = '/div[2]/div/div/div[1]/div/div/div[1]/a/div'
 
+    # Minibatch = Inner Loop = 50 records
+    # Batch = Outer Loop = 1000 records loop
+    min_max_minibatch_range = (1,50)
+    if test == True :
+        min_max_minibatch_range = (1,2)
+
     # TOP 50
     top_50_xpath = '/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[{game_index}]/c-wiz/div/div'
-    for i in range(1,5) :
+    for i in range(min_max_minibatch_range[0],min_max_minibatch_range[1]) :
         link_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_link_xpath)
         title_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_title_xpath)
 
-        top_100_games.append({
+        top_apps.append({
             'rank' : i,
             'name' : title_element.get_attribute('title'),
             'app_url' : link_element.get_attribute('href')
         })
 
-    # TOP 50-100
-    # top_50_plus_xpath = '/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[{game_index}]/div/div'
-    # for i in range(1,51) :
-    #     link_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_link_xpath)
-    #     title_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_title_xpath)
-    #
-    #     top_100_games.append({
-    #         'rank': i+50,
-    #         'name': title_element.get_attribute('title'),
-    #         'app_url': link_element.get_attribute('href')
-    #     })
+    min_max_batch_range = (1,19)
+    if test == True :
+        min_max_batch_range = (0,1)
 
-    return driver, top_100_games
+    # Batch download 50 apps at a time
+    for j in range(min_max_batch_range[0],min_max_batch_range[1]) :
+        scroll_down(driver, 5)
+
+        # TOP 50-100
+        top_50_plus_xpath = '/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[{game_index}]/div/div'
+        for i in range(min_max_minibatch_range[0],min_max_minibatch_range[1]) :
+            link_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_link_xpath)
+            title_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_title_xpath)
+
+            top_apps.append({
+                'rank': i+50 + (j*50),
+                'name': title_element.get_attribute('title'),
+                'app_url': link_element.get_attribute('href')
+            })
+
+    return driver, top_apps
 
 def get_top_details(driver, top_results):
     main_frame_xpath = '/html/body/div[1]/div[4]/c-wiz[1]/div/div[2]/div/div[1]/div/c-wiz[1]/c-wiz[1]/div'
@@ -83,7 +98,8 @@ def get_top_details(driver, top_results):
 
     # This seems to load "externally"
     additional_info_frame_xpath = '/html/body/div[1]/div[4]/c-wiz[1]/div/div[2]/div/div[1]/div/c-wiz[3]'
-    num_installs_sub_xpath = '/div[1]/div[2]/div/div[3]/span/div/span'
+    num_installs_1_sub_xpath = '/div[1]/div[2]/div/div[3]/span/div/span'
+    num_installs_2_sub_xpath = '/html/body/div[1]/div[4]/c-wiz/div/div[2]/div/div[1]/div/c-wiz[2]/div[1]/div[2]/div/div[3]/span/div/span'
     last_updated_sub_xpath = '/div[1]/div[2]/div/div[1]/span/div/span'
 
     # Ratings & Reviews also loads "externally"
@@ -99,12 +115,13 @@ def get_top_details(driver, top_results):
         'publisher_2': WebElement(main_frame_xpath + publisher_2_sub_xpath, 'innerHTML'),
         'category_1': WebElement(main_frame_xpath + category_1_sub_xpath, 'text'),
         'category_2': WebElement(main_frame_xpath + category_2_sub_xpath, 'text'),
-        'num_installs': WebElement(additional_info_frame_xpath + num_installs_sub_xpath, 'innerHTML'),
+        'num_installs_1': WebElement(additional_info_frame_xpath + num_installs_1_sub_xpath, 'innerHTML'),
+        'num_installs_2': WebElement(num_installs_2_sub_xpath, 'innerHTML'),
         'last_updated_date': WebElement(additional_info_frame_xpath + last_updated_sub_xpath, 'innerHTML'),
         'ratings_num_1': WebElement(review_frame_xpath + ratings_num_1_sub_xpath, 'aria-label'),
         'ratings_num_2': WebElement(ratings_num_2_sub_xpath, 'aria-label'),
-        'ratings_score_1': WebElement(review_frame_xpath + ratings_score_1_sub_xpath, 'innerHTML'),
-        'ratings_score_2': WebElement(ratings_score_2_sub_xpath, 'innerHTML'),
+        'ratings_score_1': WebElement(review_frame_xpath + ratings_score_1_sub_xpath, 'aria-label'),
+        'ratings_score_2': WebElement(ratings_score_2_sub_xpath, 'aria-label'),
     }
 
     for app in top_results :
@@ -117,26 +134,27 @@ def get_top_details(driver, top_results):
         except TimeoutException:
             print('Installs element failed to load')
 
+        app_details = {}
         for key, element in elements.items() :
             try:
                 cur_element = driver.find_element_by_xpath(element.xpath)
-                app[key] = cur_element.get_attribute(element.attribute)
+                app_details[key] = cur_element.get_attribute(element.attribute)
             except NoSuchElementException:
                 pass
 
         # print('Ratings frame attribute: {}'.format(driver.find_element_by_xpath(ratings_frame).get_attribute('aria-label')))
 
-        app['icon_url'] = app.get('icon')
-        app['publisher_name'] = app.get('publisher_2') if app.get('publisher_1') is None else app.get('publisher_1')
-        app['category'] = app.get('category_2') if app.get('category_1') is None else app.get('category_1')
-        app['ratings_num'] = app.get('ratings_num_2') if app.get('ratings_num_1') is None else app.get('ratings_num_1')
-        app['ratings_score'] = app.get('ratings_score_2') if app.get('ratings_score_1') is None else app.get('ratings_score_1')
-        app['num_installs'] = app.get('num_installs')
-        app['last_updated_date'] = app.get('last_updated_date')
+        app['icon_url'] = app_details.get('icon')
+        app['publisher_name'] = app_details.get('publisher_2') if app_details.get('publisher_1') is None else app_details.get('publisher_1')
+        app['category'] = app_details.get('category_2') if app_details.get('category_1') is None else app_details.get('category_1')
+        app['ratings_num'] = app_details.get('ratings_num_2') if app_details.get('ratings_num_1') is None else app_details.get('ratings_num_1')
+        app['ratings_score'] = app_details.get('ratings_score_2') if app_details.get('ratings_score_1') is None else app_details.get('ratings_score_1')
+        app['num_installs'] = app_details.get('num_installs_2') if app_details.get('num_installs_1') is None else app_details.get('num_installs_1')
+        app['last_updated_date'] = app_details.get('last_updated_date')
 
     return top_results
 
-driver, top_results = get_top()
+driver, top_results = get_top(test=True)
 top_results_detailed = get_top_details(driver, top_results)
 
 for app in top_results_detailed :
@@ -165,10 +183,37 @@ for app in top_results_detailed :
         if app[key] == None :
             empty_fields[key] += 1
 
+# APP: Epic Seven (39,40)
+# Ratings Score is messed up - has a long div/div/div hierarchy
+# Num installs isn't working
 for key, value in empty_fields.items():
     print('Total number of empty {}:{}'.format(key, value))
 
-#Total number of empty num_installs:1
-#Total number of empty ratings_num:18
-#Total number of empty ratings_score:18
-#Total number of empty category:0
+# Utility Functions
+def get_todays_date():
+    today = datetime.date.today()
+    today = str(today).replace('-', '_')
+    return today
+
+def get_todays_month():
+    today = datetime.date.today()
+    return today.month
+
+def get_todays_year():
+    today = datetime.date.today()
+    return today.year
+
+def save_record_to_json(file_path, record):
+    with open(file_path, "w") as f:
+        json.dump(record, f)
+
+# Process all app_url records, and save them to their respective location
+def save_daily_record(app_list):
+    date = get_todays_date()
+
+    file_name = 'top_grossing_android_{}.json'.format(date)
+
+    # Save the record in the app_id's monthly directory
+    save_record_to_json('./output/{}'.format(file_name), app_list)
+
+save_daily_record(top_results)
