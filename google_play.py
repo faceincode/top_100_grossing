@@ -10,16 +10,16 @@ from utils.record_utils import get_todays_date, save_record_to_json
 from utils.selenium_utils import has_html_elements, scroll_down
 from utils.system_utils import send_error_report, str2bool
 
-# TODO - Useful functionality:
-# Containerize project so I can run from bash on a cron job
-# Eliminate any funny chromedriver / dependency issues
-# Docker run should output to local folder
-# Clean up element XPATH/Element/Attribute code
-# Data workflow will be responsible for managing I/O
-# Add e-mail alert on any bad data so I can fix it...
+# TODO:
+# Containerize project so I can run from bash on a cron job. Yes. (Finish setting up local env)
+# Eliminate any funny chromedriver / dependency issues. Yes
+# Docker run should output to local folder. Yes.
+# Clean up element XPATH/Element/Attribute code. Later.
+# Data workflow will be responsible for managing I/O. Yes.
+# Add e-mail alert on any bad data so I can fix it... Let's get there first.
     # or level up and build out workflow in Airflow
-# If this starts failing, update logic to resume daily activity from where it left off.
-def get_top_app_records(test=False):
+# If this starts failing, update logic to resume daily activity from where it left off. - Fast pipeline. Doesn't matter.
+def get_top_app_records(args_test):
     """
     Returns the top X products in the top grossing list.
     This could likely be abstracted to pass in any list from GP and extracted.
@@ -50,47 +50,59 @@ def get_top_app_records(test=False):
 
     # Minibatch = Inner Loop = 50 records
     # Batch = Outer Loop = 1000 records loop
-    min_max_minibatch_range = (1,50)
-    if test == True :
-        min_max_minibatch_range = (1,2)
+    app_iter = (1,50)
+    if args_test == True :
+        app_iter = (1,3)
 
     # TOP 50 items
     # We actually go from 1-49 as the 50th item, uses a different XPath
     # We simply increment the game_index value, to access each app on GP
     top_50_xpath = '/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/div[{game_index}]/c-wiz/div/div'
-    for i in range(min_max_minibatch_range[0],min_max_minibatch_range[1]) :
-        link_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_link_xpath)
-        title_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_title_xpath)
+    app_name = None
+    app_url = None
+    app_rank = None
+    for i in range(app_iter[0],app_iter[1]) :
+        try:
+            app_name_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_title_xpath)
+            app_url_element = driver.find_element_by_xpath(top_50_xpath.format(game_index=i) + game_link_xpath)
+            app_rank = i
 
-        top_apps.append({
-            'rank' : i,
-            'name' : title_element.get_attribute('title'),
-            'app_url' : link_element.get_attribute('href')
-        })
+            top_apps.append({
+                'rank' : app_rank,
+                'name' : app_name_element.get_attribute('title'),
+                'app_url' : app_url_element.get_attribute('href'),
+            })
+        except NoSuchElementException as e:
+            # print("Exception finding rank: [{}] app: [{}] element: [{}]".format(app_rank, app_name, 'test'))
+            pass
 
     # This is setting up an outer loop, that defines how many batches of 50 apps we're going to download
-    min_max_batch_range = (1,19)
-    if test == True :
-        min_max_batch_range = (0,1)
+    list_iter = (0,3)
 
     # Batch download 50 apps at a time, and does this multiple times
-    for next_50_index in range(min_max_batch_range[0],min_max_batch_range[1]) :
+    for next_50_index in range(list_iter[0],list_iter[1]) :
         # We scroll down the web page as needed, to load the next 50 apps
         scroll_down(driver, 5)
 
         # TOP 50+ XPath index.
         # {game_index} is incremented to access 1 through 50th app in this segment
         top_50_plus_xpath = '/html/body/div[1]/div[4]/c-wiz/div/c-wiz/div/c-wiz/c-wiz/c-wiz/div/div[2]/c-wiz[{game_index}]/div/div'
-        for i in range(min_max_minibatch_range[0],min_max_minibatch_range[1]) :
-            link_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_link_xpath)
-            title_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=i) + game_title_xpath)
+        for i in range(app_iter[0],app_iter[1]) :
+            try:
+                app_index = (next_50_index * 50) + i
+                app_rank = 50 + app_index
+                app_name_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=app_index) + game_title_xpath)
+                app_url_element = driver.find_element_by_xpath(top_50_plus_xpath.format(game_index=app_index) + game_link_xpath)
 
-            top_apps.append({
-                # We've already gone through 49 items, so our base index is 50.
-                'rank': 50 + (next_50_index*50) + i,
-                'name': title_element.get_attribute('title'),
-                'app_url': link_element.get_attribute('href')
-            })
+                top_apps.append({
+                    # We've already gone through 49 items, so our base index is 50.
+                    'rank': app_rank,
+                    'name': app_name_element.get_attribute('title'),
+                    'app_url': app_url_element.get_attribute('href')
+                })
+            except NoSuchElementException as e:
+                #print("Exception finding rank: [{}] app: [{}] element: [{}]".format(app_rank, app_name, 'None'))
+                pass
 
     return driver, top_apps
 
@@ -158,7 +170,8 @@ def get_app_details(driver, top_results):
             try:
                 cur_element = driver.find_element_by_xpath(element.xpath)
                 app_details[key] = cur_element.get_attribute(element.attribute)
-            except NoSuchElementException:
+            except NoSuchElementException as e :
+                # print("Exception finding rank: [{}] app: [{}] element: [{}]".format(app['rank'], app['name'], key))
                 pass
 
         # We then collect all the data from the HTML elements/attributes we scraped
@@ -170,7 +183,7 @@ def get_app_details(driver, top_results):
         app['num_installs'] = app_details.get('num_installs_2') if app_details.get('num_installs_1') is None else app_details.get('num_installs_1')
         app['last_updated_date'] = app_details.get('last_updated_date')
 
-def check_errors(top_results_detailed):
+def check_errors(args_test, top_results_detailed):
     """
     NUmber of fields that are empty
     Number of fields that might hae extracted HTML (i.e. check for <div> <span> etc...)
@@ -201,11 +214,11 @@ def check_errors(top_results_detailed):
         for key, value in app.items() :
             if app[key] is None:
                 scraping_errors[key] += 1
-                scraping_errors['error_apps'][app['name']] = 1
+                scraping_errors['error_apps'][app['name']] = app['name']
                 errors_encountered = True
             elif has_html_elements(app[key]) == True :
-                scraping_errors['html_scrapes'] += 1
-                scraping_errors['error_apps'][app['name']] = 1
+                scraping_errors['error_html_scrapes'] += 1
+                scraping_errors['error_apps'][app['name']] = app['rank']
                 errors_encountered = True
 
     if errors_encountered == True :
@@ -213,10 +226,13 @@ def check_errors(top_results_detailed):
         for key, value in scraping_errors.items():
             if not key in ('error_html_scrapes','error_apps'):
                 error_list.append('Total number of empty {}:{}'.format(key, value))
+                print('Total number of empty {}:{}'.format(key, value))
             else:
                 error_list.append('{}: {}'.format(key, value))
+                print('Total number of empty {}:{}'.format(key, value))
 
-        send_error_report(error_list)
+        # if args_test == False :
+            # send_error_report(error_list)
     else:
         print("SUCCESS: Data checked. Found no issues.")
 
@@ -237,10 +253,10 @@ def main():
     :return:
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--test', type=str2bool, default=False, nargs='?',  const=True , required=False, help="Tests 2-3 apps")
+    parser.add_argument('--test', type=str2bool, default=False, nargs='?',  const=True , required=False, help="Tests [01]-[03]/50 app pages.")
     args = parser.parse_args()
 
-    driver, top_results = get_top_app_records(test=args.test)
+    driver, top_results = get_top_app_records(args_test=args.test)
     get_app_details(driver, top_results)
 
     if args.test == True :
@@ -258,7 +274,7 @@ def main():
                 app['app_url']
             ))
 
-    check_errors(top_results)
+    check_errors(args_test=args.test, top_results_detailed=top_results)
     save_daily_record(top_results)
 
 if __name__ == "__main__":

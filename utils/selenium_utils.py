@@ -6,9 +6,11 @@ def has_html_elements(check_string):
     :param check_string: any string you want to check against HTML tags
     :return : True if any HTML tags are found inside string
     """
-    matches =  re.search("<p|<span|<div|<a|<body|<h2|<h1",check_string)
-    if matches :
-        return True
+    if isinstance(check_string, str) :
+        matches =  re.search("<p|<span|<div|<a|<body|<h2|<h1",check_string)
+        if matches :
+            return True
+
     return False
 
 def scroll_down(driver, n_times):

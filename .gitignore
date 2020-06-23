@@ -1,3 +1,4 @@
 **/output
 **/venv
 **/secret
+*.pyc
